@@ -153,7 +153,64 @@ function showAllNotifications() {
         card.style.display = 'block';
     });
 }
+function viewDetail(reportId) {
+    fetch(`../func/get_report_detail.php?id=${reportId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Switch to diajukan tab and populate data
+            document.querySelector('[data-bs-target="#history-diajukan"]').click();
+            
+            // Populate the detail view with the returned data
+            document.querySelector('#detail-bukti').src = '../uploads/evidence/' + data.bukti;
+            document.querySelector('#detail-nama').textContent = data.name;
+            document.querySelector('#detail-pelanggaran').textContent = data.nama_pelanggaran;
+            document.querySelector('#detail-waktu').textContent = new Date(data.waktu).toLocaleString();
+            document.querySelector('#detail-lokasi').textContent = data.lokasi;
+        } else {
+            alert('Error loading report details');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
 
+function viewSubmittedDetail(reportId) {
+    fetch(`../func/get_submitted_report.php?id=${reportId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelector('#detail-bukti').src = '../uploads/evidence/' + data.bukti;
+            document.querySelector('#detail-pelanggaran').textContent = data.nama_pelanggaran;
+            document.querySelector('#detail-waktu').textContent = new Date(data.waktu).toLocaleString('id-ID');
+            document.querySelector('#detail-lokasi').textContent = data.lokasi;
+            
+            new bootstrap.Modal(document.getElementById('detailModal')).show();
+        } else {
+            alert('Error loading report details');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+function viewReportDetail(reportId) {
+    fetch(`../func/get_report_details.php?id=${reportId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelector('#modal-bukti').src = '../uploads/evidence/' + data.data.bukti;
+            document.querySelector('#modal-pelanggaran').textContent = data.data.nama_pelanggaran;
+            document.querySelector('#modal-waktu').textContent = new Date(data.data.waktu).toLocaleString('id-ID');
+            document.querySelector('#modal-lokasi').textContent = data.data.lokasi;
+            
+            new bootstrap.Modal(document.getElementById('reportDetailModal')).show();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to load report details');
+    });
+}
 function showUnreadNotifications() {
     // You can add logic here to filter unread notifications
     // For now, it just shows all notifications
@@ -214,6 +271,8 @@ function showCompensationList() {
 document.querySelectorAll('.btn-warning').forEach(button => {
   button.addEventListener('click', showCheckCompensation);
 });
+
+
         </script>
 </head>
 <body>
@@ -344,8 +403,8 @@ document.querySelectorAll('.btn-warning').forEach(button => {
         <button class="nav-link" id="v-pills-report-tab" data-bs-toggle="pill" data-bs-target="#v-pills-report" type="button" role="tab" aria-controls="v-pills-report" aria-selected="false" >
             <i class="fa fa-flag"></i> Report
         </button>
-        <button class="nav-link" id="v-pills-punishment-tab" data-bs-toggle="pill" data-bs-target="#v-pills-punishment" type="button" role="tab" aria-controls="v-pills-punishment" aria-selected="false">
-            <i class="fa fa-exclamation-triangle"></i> Punishment
+        <button class="nav-link" id="v-pills-history-tab" data-bs-toggle="pill" data-bs-target="#v-pills-history" type="button" role="tab" aria-controls="v-pills-history" aria-selected="false">
+            <i class="fa fa-exclamation-triangle"></i> History
         </button>
         <button class="nav-link" id="v-pills-compensation-tab" data-bs-toggle="pill" data-bs-target="#v-pills-compensation" type="button" role="tab" aria-controls="v-pills-compensation" aria-selected="false">
             <i class="fa fa-history"></i> Compensation
@@ -583,7 +642,13 @@ document.querySelectorAll('.btn-warning').forEach(button => {
 </div>
 
 
-<div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-punishment" role="tabpanel" aria-labelledby="v-pills-punishment-tab">
+<div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-history" role="tabpanel" aria-labelledby="v-pills-history-tab">
+    <div class="nav nav-tabs mb-4" role="tablist">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#history-diajukan" type="button" role="tab">Diajukan</button>
+    </div>
+
+    <div class="tab-content">
+    <div class="tab-pane fade" id="history-diajukan" role="tabpanel">
     <div class="table-responsive">
         <h5>Laporan yang Diajukan</h5>
         <table class="table table-bordered">
@@ -591,27 +656,76 @@ document.querySelectorAll('.btn-warning').forEach(button => {
                 <tr>
                     <th>No. Pelanggaran</th>
                     <th>Nama Pelanggaran</th>
-                    <th>Hukuman</th>
+                    <th>Waktu</th>
                     <th>Status</th>
+                    <th>Detail</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>ABC01</td>
-                    <td>Merokok</td>
-                    <td>Membersihkan taman</td>
-                    <td>Accepted</td>
-                </tr>
-                <tr>
-                    <td>ABC02</td>
-                    <td>Merusak sarana prasarana</td>
-                    <td>Mengganti barang yang sama</td>
-                    <td>Not Done</td>
-                </tr>
+                <?php
+                try {
+                    $user_id = $_SESSION['user_id'];
+                    $query = "SELECT r.id, r.nama_pelanggaran, r.waktu, h.status 
+                             FROM report r 
+                             INNER JOIN history h ON h.fk_report = r.id 
+                             ORDER BY r.waktu DESC";
+                    
+                    $stmt = $koneksi->prepare($query);
+                    $stmt->execute();
+                    
+                    while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        echo "<tr>";
+                        echo "<td>VIO" . str_pad($row['id'], 3, '0', STR_PAD_LEFT) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['nama_pelanggaran']) . "</td>";
+                        echo "<td>" . date('d/m/Y H:i', strtotime($row['waktu'])) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['status']) . "</td>";
+                        echo "<td><button class='btn btn-warning btn-sm' onclick='viewReportDetail(" . $row['id'] . ")'>Check</button></td>";
+                        echo "</tr>";
+                    }
+                } catch(PDOException $e) {
+                    echo "<tr><td colspan='5' class='text-danger'>Error loading reports: " . $e->getMessage() . "</td></tr>";
+                }
+                ?>
             </tbody>
         </table>
     </div>
+
+    <!-- Detail Modal -->
+    <div class="modal fade" id="reportDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detail Laporan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <h6>Bukti</h6>
+                        <img id="modal-bukti" class="img-fluid rounded" alt="Bukti">
+                    </div>
+                    <div class="mb-3">
+                        <h6>Nama Pelanggaran</h6>
+                        <p id="modal-pelanggaran" class="text-muted"></p>
+                    </div>
+                    <div class="mb-3">
+                        <h6>Waktu</h6>
+                        <p id="modal-waktu" class="text-muted"></p>
+                    </div>
+                    <div class="mb-3">
+                        <h6>Lokasi</h6>
+                        <p id="modal-lokasi" class="text-muted"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+</div>
+</div>
+
+
+
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-compensation" role="tabpanel">
     <div class="compensation">
         <h5>Compensation History</h5>
