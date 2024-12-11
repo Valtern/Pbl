@@ -1,0 +1,36 @@
+.d-flex {
+    gap: 20px; /* Consistent spacing between nav and content */
+}
+
+.nav-pills {
+    min-width: 150px; /* Fixed minimum width */
+    width: 150px; /* Fixed width */
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.nav-pills .nav-link {
+    width: 150px; /* Fixed width for buttons */
+    margin-bottom: 10px;
+    padding: 8px 15px;
+    text-align: center;
+    background-color: #ffc107;
+    color: black;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #4285f4;
+    color: white;
+}
+
+.tab-content {
+    flex: 1; /* Take remaining space */
+    padding: 30px;
+    border-radius: 8px;
+    min-width: 0; /* Prevent content overflow */
+}
+
+.tab-pane {
+    width: 100%; /* Full width of container */
+}

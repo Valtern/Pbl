@@ -1,0 +1,58 @@
+/* Add these styles and replace the existing nav-pills and tab-content styles */
+.d-flex {
+    gap: 20px; /* Consistent spacing between nav and content */
+}
+
+.nav-pills {
+    min-width: 150px; /* Fixed minimum width */
+    width: 150px; /* Fixed width */
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.nav-pills .nav-link {
+    width: 150px; /* Fixed width for buttons */
+    margin-bottom: 10px;
+    padding: 8px 15px;
+    text-align: center;
+    background-color: #ffc107;
+    color: black;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #4285f4;
+    color: white;
+}
+
+.tab-content {
+    flex: 1; /* Take remaining space */
+    background-color: #e8f0fe;
+    padding: 30px;
+    border-radius: 8px;
+    min-width: 0; /* Prevent content overflow */
+}
+
+.tab-pane {
+    width: 100%; /* Full width of container */
+}
+
+/* Welcome ToSi Disiplin JTI */
+
+.welcome-title{
+width: 599px;
+height: 128px;
+margin-left: 130px;
+
+font-family: 'Poppins';
+font-style: normal;
+font-weight: 600;
+font-size: 64px;
+line-height: 64px;
+
+
+background: linear-gradient(90deg, #002EA6 0%, #993A36 61.5%, #FEC01A 100%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+}
