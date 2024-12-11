@@ -80,6 +80,106 @@ function populateEditForm(data) {
     document.getElementById('edit-no-hp-ortu').value = data.no_hp_ortu;
     document.getElementById('edit-email').value = data.email;
 }
+// Add this to your existing script section
+document.addEventListener('DOMContentLoaded', function() {
+    const reportForm = document.querySelector('form[action="../func/report.php"]');
+    
+    reportForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        fetch('../func/report.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Report submitted successfully');
+                reportForm.reset();
+                // Switch to history tab
+                document.querySelector('#v-pills-history-tab').click();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while submitting the report');
+        });
+    });
+});
+function refreshHistory() {
+    fetch('../func/get_history.php')
+    .then(response => response.json())
+    .then(data => {
+        const historyTable = document.querySelector('#history-diterima tbody');
+        historyTable.innerHTML = '';
+        
+        data.forEach(item => {
+            const row = `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.nama_pelanggaran}</td>
+                    <td>${item.bobot}</td>
+                    <td>${item.status}</td>
+                    <td><button class="btn btn-warning btn-sm" onclick="viewDetail(${item.id})">Check</button></td>
+                </tr>
+            `;
+            historyTable.insertAdjacentHTML('beforeend', row);
+        });
+    })
+    .catch(error => console.error('Error:', error));
+}
+document.querySelector('form[action="../func/report.php"]').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const waktuInput = formData.get('waktu');
+    
+    // Format datetime to SQL Server compatible format
+    const date = new Date(waktuInput);
+    const formattedDate = date.toISOString().slice(0, 19).replace('T', ' ');
+    formData.set('waktu', formattedDate);
+    
+    fetch('../func/report.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Report submitted successfully');
+            this.reset();
+            document.querySelector('#v-pills-history-tab').click();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while submitting the report');
+    });
+});
+
+document.querySelector('input[name="bukti"]').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    if (!allowedTypes.includes(file.type)) {
+        alert('Please upload an image file (JPEG, PNG, or GIF)');
+        this.value = '';
+        return;
+    }
+    
+    if (file.size > maxSize) {
+        alert('File size must be less than 5MB');
+        this.value = '';
+        return;
+    }
+});
 
 // Add this to your existing DOMContentLoaded event listener
 fetch('../func/login.php', {
@@ -489,75 +589,56 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
     <div class="card">
         <div class="card-body">
             <h5 class="card-title mb-4">Laporkan Pelanggaran!</h5>
-            
-            <form method="POST" action="../func/report.php" enctype="multipart/form-data">
-    <div class="mb-3">
-        <label class="form-label">Mahasiswa terlibat</label>
-        <select name="reported_student" class="form-select bg-light" required>
-            <option value="" selected disabled>Pilih mahasiswa</option>
-            <?php
-            try {
-                $query = "SELECT id, nim, nama_lengkap FROM mahasiswa";
-                $stmt = $koneksi->prepare($query);
-                $stmt->execute();
-                while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    echo "<option value='" . $row['id'] . "'>" . 
-                         htmlspecialchars($row['nim'] . ' - ' . $row['nama_lengkap']) . 
-                         "</option>";
-                }
-            } catch(PDOException $e) {
-                echo "<option value=''>Error loading students</option>";
-            }
-            ?>
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Bukti</label>
-        <input type="file" name="evidence" class="form-control bg-light" accept="image/*" required>
-    </div>
-
-    <div class="mb-3">
-    <label class="form-label">Violation name</label>
-    <select class="form-select bg-light" name="violation_id" required>
-        <option selected disabled>Pick violation</option>
-        <?php
+            <form method="POST" action="../func/report.php" enctype="multipart/form-data" id="reportForm">
+            <div class="mb-3">
+    <label class="form-label">Mahasiswa terlibat</label>
+    <select name="name" class="form-select bg-light" required>
+        <option value="" selected disabled>Pilih mahasiswa</option>
+        <?php 
         try {
-            // First set the database context
-            $stmt = $koneksi->prepare("USE sistatip");
+            $stmt = $koneksi->prepare("SELECT id, nim, nama_lengkap FROM mahasiswa ORDER BY nama_lengkap ASC");
             $stmt->execute();
-            
-            // Then execute the SELECT query separately
-            $stmt = $koneksi->prepare("SELECT id, violation_description, level 
-                                     FROM violation 
-                                     ORDER BY level ASC");
-            $stmt->execute();
-            
             while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                echo "<option value='" . $row['id'] . "'>" . 
-                     htmlspecialchars("Level " . $row['level'] . " - " . $row['violation_description']) . 
-                     "</option>";
+                echo "<option value='" . htmlspecialchars($row['nama_lengkap']) . "'>" . 
+                     htmlspecialchars($row['nim'] . " - " . $row['nama_lengkap']) . "</option>";
             }
         } catch(PDOException $e) {
-            echo "<option disabled>Error loading violations: " . htmlspecialchars($e->getMessage()) . "</option>";
+            echo "<option disabled>Error loading students</option>";
         }
         ?>
     </select>
 </div>
 
-
-
-
+    <div class="mb-3">
+        <label class="form-label">Bukti</label>
+        <input type="file" name="bukti" class="form-control bg-light" accept="image/*" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Jenis Pelanggaran</label>
+        <select name="nama_pelanggaran" class="form-select bg-light" required>
+            <option value="" selected disabled>Pilih pelanggaran</option>
+            <?php
+            try {
+                $stmt = $koneksi->prepare("SELECT violation_description, level FROM violation ORDER BY level ASC");
+                $stmt->execute();
+                while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    echo "<option value='" . htmlspecialchars($row['violation_description']) . "'>" . 
+                         htmlspecialchars("Level " . $row['level'] . " - " . $row['violation_description']) . "</option>";
+                }
+            } catch(PDOException $e) {
+                echo "<option disabled>Error loading violations</option>";
+            }
+            ?>
+        </select>
+    </div>
     <div class="mb-3">
         <label class="form-label">Waktu</label>
-        <input type="datetime-local" name="incident_time" class="form-control bg-light" required>
+        <input type="datetime-local" name="waktu" class="form-control bg-light" required>
     </div>
-
     <div class="mb-3">
         <label class="form-label">Lokasi</label>
-        <input type="text" name="location" class="form-control bg-light" required>
+        <input type="text" name="lokasi" class="form-control bg-light" required>
     </div>
-
     <div class="text-end">
         <button type="submit" class="btn btn-primary">Kirim</button>
     </div>
@@ -566,6 +647,8 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
         </div>
     </div>
 </div>
+
+
 
 
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-history" role="tabpanel" aria-labelledby="v-pills-history-tab">

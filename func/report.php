@@ -2,52 +2,75 @@
 session_start();
 require_once '../connection.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ../mahasiswa/dashboard.php');
-    exit();
-}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
 
-try {
-    $koneksi->beginTransaction();
+        
+        // Get form data
+        $name = $_POST['name'];
+        $nama_pelanggaran = $_POST['nama_pelanggaran'];
+        $waktu = $_POST['waktu'];
+        $lokasi = $_POST['lokasi'];
+        
 
-    // Generate unique violation number
-    $violation_number = 'VIO' . date('YmdHis') . rand(100, 999);
-    
-    // Insert into report_hist
-    $query = "INSERT INTO report_hist (no_pelanggar, nama_pelanggaran, status, id_pelanggar) 
-              SELECT :violation_number, violation_description, 'Pending', :reported_student 
-              FROM violation WHERE id = :violation_id";
-    
-    $stmt = $koneksi->prepare($query);
-    $stmt->bindParam(':violation_number', $violation_number);
-    $stmt->bindParam(':reported_student', $_POST['reported_student']);
-    $stmt->bindParam(':violation_id', $_POST['violation_id']);
-    $stmt->execute();
+        // Handle file upload
+        $bukti = '';
+        if (isset($_FILES['bukti']) && $_FILES['bukti']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = '../uploads/evidence/';
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
 
-    // Insert into report_hist_detail
-    $query = "INSERT INTO report_hist_detail (mhsw_id, waktu, lokasi, report_hist) 
-              VALUES (:reporter_id, :incident_time, :location, :violation_number)";
-    
-    $stmt = $koneksi->prepare($query);
-    $stmt->bindParam(':reporter_id', $_SESSION['user_id']);
-    $stmt->bindParam(':incident_time', $_POST['incident_time']);
-    $stmt->bindParam(':location', $_POST['location']);
-    $stmt->bindParam(':violation_number', $violation_number);
-    $stmt->execute();
+            $fileExtension = pathinfo($_FILES['bukti']['name'], PATHINFO_EXTENSION);
+            $fileName = uniqid() . '.' . $fileExtension;
+            $targetPath = $uploadDir . $fileName;
 
-    // Handle file upload
-    if (isset($_FILES['evidence']) && $_FILES['evidence']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = '../uploads/evidence/';
-        $file_extension = pathinfo($_FILES['evidence']['name'], PATHINFO_EXTENSION);
-        $new_filename = $violation_number . '.' . $file_extension;
-        move_uploaded_file($_FILES['evidence']['tmp_name'], $upload_dir . $new_filename);
+            if (move_uploaded_file($_FILES['bukti']['tmp_name'], $targetPath)) {
+                $bukti = $fileName;
+            } else {
+                throw new Exception('Failed to upload file');
+            }
+        }
+
+// Get form data
+$waktu = date('Y-m-d H:i:s', strtotime($_POST['waktu']));
+
+// Use parameterized query
+$query = "INSERT INTO report (name, bukti, nama_pelanggaran, waktu, lokasi) 
+         VALUES (:name, :bukti, :nama_pelanggaran, :waktu, :lokasi)";
+
+        $stmt = $koneksi->prepare($query);
+        $stmt->bindParam(':name', $name);
+        $stmt->bindParam(':bukti', $bukti);
+        $stmt->bindParam(':nama_pelanggaran', $nama_pelanggaran);
+        $stmt->bindParam(':waktu', $waktu);
+        $stmt->bindParam(':lokasi', $lokasi);
+        
+        $stmt->execute();
+        
+        // Get the last inserted ID
+        $reportId = $koneksi->lastInsertId();
+
+        // Insert into history table with default status
+        $status = 'Pending';
+        $bobot = 'TBD';
+        $hukuman = 'TBD';
+        
+        $historyQuery = "INSERT INTO history (fk_report, status, bobot, hukuman) 
+                        VALUES (:fk_report, :status, :bobot, :hukuman)";
+        
+        $historyStmt = $koneksi->prepare($historyQuery);
+        $historyStmt->bindParam(':fk_report', $reportId);
+        $historyStmt->bindParam(':status', $status);
+        $historyStmt->bindParam(':bobot', $bobot);
+        $historyStmt->bindParam(':hukuman', $hukuman);
+        
+        $historyStmt->execute();
+
+        echo json_encode(['success' => true, 'message' => 'Report submitted successfully']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-
-    $koneksi->commit();
-    header('Location: ../mahasiswa/dashboard.php?report_status=success');
-
-} catch (PDOException $e) {
-    $koneksi->rollBack();
-    header('Location: ../mahasiswa/dashboard.php?report_status=error&message=' . urlencode($e->getMessage()));
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
 }
-?>
