@@ -650,7 +650,7 @@ document.querySelectorAll('.btn-warning').forEach(button => {
     <div class="tab-content">
     <div class="tab-pane fade" id="history-diajukan" role="tabpanel">
     <div class="table-responsive">
-        <h5>Laporan yang Diajukan</h5>
+        <h5>Reports that's submitted</h5>
         <table class="table table-bordered">
             <thead>
                 <tr>
