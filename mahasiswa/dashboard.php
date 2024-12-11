@@ -163,6 +163,66 @@ document.querySelector('form[action="../func/report.php"]').addEventListener('su
     });
 });
 
+function viewDetail(reportId) {
+    fetch(`../func/get_report_detail.php?id=${reportId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Switch to diajukan tab and populate data
+            document.querySelector('[data-bs-target="#history-diajukan"]').click();
+            
+            // Populate the detail view with the returned data
+            document.querySelector('#detail-bukti').src = '../uploads/evidence/' + data.bukti;
+            document.querySelector('#detail-nama').textContent = data.name;
+            document.querySelector('#detail-pelanggaran').textContent = data.nama_pelanggaran;
+            document.querySelector('#detail-waktu').textContent = new Date(data.waktu).toLocaleString();
+            document.querySelector('#detail-lokasi').textContent = data.lokasi;
+        } else {
+            alert('Error loading report details');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function viewSubmittedDetail(reportId) {
+    fetch(`../func/get_submitted_report.php?id=${reportId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelector('#detail-bukti').src = '../uploads/evidence/' + data.bukti;
+            document.querySelector('#detail-pelanggaran').textContent = data.nama_pelanggaran;
+            document.querySelector('#detail-waktu').textContent = new Date(data.waktu).toLocaleString('id-ID');
+            document.querySelector('#detail-lokasi').textContent = data.lokasi;
+            
+            new bootstrap.Modal(document.getElementById('detailModal')).show();
+        } else {
+            alert('Error loading report details');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+function viewReportDetail(reportId) {
+    fetch(`../func/get_report_details.php?id=${reportId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelector('#modal-bukti').src = '../uploads/evidence/' + data.data.bukti;
+            document.querySelector('#modal-pelanggaran').textContent = data.data.nama_pelanggaran;
+            document.querySelector('#modal-waktu').textContent = new Date(data.data.waktu).toLocaleString('id-ID');
+            document.querySelector('#modal-lokasi').textContent = data.data.lokasi;
+            
+            new bootstrap.Modal(document.getElementById('reportDetailModal')).show();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to load report details');
+    });
+}
+
+
 document.querySelector('input[name="bukti"]').addEventListener('change', function(e) {
     const file = e.target.files[0];
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
@@ -659,94 +719,129 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
 
     <div class="tab-content">
         <!-- Diterima tab -->
-        <div class="tab-pane fade show active" id="history-diterima" role="tabpanel">
-            <div class="table-responsive">
-                <h5>Laporan yang Diterima</h5>
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>No. Pelanggaran</th>
-                            <th>Nama Pelanggaran</th>
-                            <th>Bobot</th>
-                            <th>Status</th>
-                            <th>Detail</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>ABC01</td>
-                            <td>Merokok</td>
-                            <td>IV</td>
-                            <td>Accepted</td>
-                            <td><button class="btn btn-warning btn-sm">Check</button></td>
-                        </tr>
+<div class="tab-pane fade show active" id="history-diterima" role="tabpanel">
+    <div class="table-responsive">
+        <h5>Laporan yang Diterima</h5>
+        <table class="table table-bordered">
+            <thead>
                 <tr>
-                    <td>ABC02</td>
-                    <td>Merusak sarana prasarana</td>
-                    <td>II</td>
-                    <td>Accepted</td>
-                    <td><button class="btn btn-warning btn-sm">Check</button></td>
+                    <th>No. Pelanggaran</th>
+                    <th>Nama Pelanggaran</th>
+                    <th>Bobot</th>
+                    <th>Status</th>
+                    <th>Detail</th>
                 </tr>
-                <tr>
-                    <td>ABC03</td>
-                    <td>Berkelahi</td>
-                    <td></td>
-                    <td>Pending</td>
-                    <td><button class="btn btn-warning btn-sm">Check</button></td>
-                </tr>
-                <tr>
-                    <td>ABC04</td>
-                    <td>Berkata Tidak Sopan</td>
-                    <td></td>
-                    <td>Pending</td>
-                    <td><button class="btn btn-warning btn-sm">Check</button></td>
-                </tr>
+            </thead>
+            <tbody>
+                <?php
+                try {
+                    $user_id = $_SESSION['user_id'];
+                    $query = "SELECT r.id, r.nama_pelanggaran, h.bobot, h.status 
+                             FROM report r 
+                             INNER JOIN history h ON h.fk_report = r.id 
+                             WHERE r.name = (SELECT nama_lengkap FROM mahasiswa WHERE id = :user_id)
+                             ORDER BY r.waktu DESC";
+                    
+                    $stmt = $koneksi->prepare($query);
+                    $stmt->bindParam(':user_id', $user_id);
+                    $stmt->execute();
+                    
+                    while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        echo "<tr>";
+                        echo "<td>VIO" . str_pad($row['id'], 3, '0', STR_PAD_LEFT) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['nama_pelanggaran']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['bobot']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['status']) . "</td>";
+                        echo "<td><button class='btn btn-warning btn-sm' onclick='viewDetail(" . $row['id'] . ")'>Check</button></td>";
+                        echo "</tr>";
+                    }
+                    
+                    if ($stmt->rowCount() == 0) {
+                        echo "<tr><td colspan='5' class='text-center'>Tidak ada laporan yang diterima</td></tr>";
+                    }
+                } catch(PDOException $e) {
+                    echo "<tr><td colspan='5' class='text-danger'>Error: " . $e->getMessage() . "</td></tr>";
+                }
+                ?>
             </tbody>
         </table>
     </div>
 </div>
+
 <div class="tab-pane fade" id="history-diajukan" role="tabpanel">
-<div class="card">
-           <div class="card-body">
-             <div class="d-flex mb-3">
-                 <div class="flex-grow-1">
-                     <h6>Bukti</h6>
-                      <img src="path_to_image" class="img-fluid rounded" style="max-width: 200px;" alt="Bukti">
-                  </div>
-              </div>
-
-      <div class="mb-3">
-        <h6>Nama Mahasiswa terlapor</h6>
-        <p class="text-muted">Agus Kopling</p>
-      </div>
-
-      <div class="mb-3">
-        <h6>NIM Mahasiswa terlapor</h6>
-        <p class="text-muted">234171230412</p>
-      </div>
-
-      <div class="mb-3">
-        <h6>Tingkat dan Jenis pelanggaran</h6>
-        <p class="text-muted">IV - Merusak Sarana Prasarana</p>
-      </div>
-
-      <div class="mb-3">
-        <h6>Waktu</h6>
-        <p class="text-muted">Kamis, 14 November 2024 pukul 14:59</p>
-      </div>
-
-      <div class="mb-3">
-        <h6>Lokasi</h6>
-        <p class="text-muted">Di Ruang Kelas</p>
-      </div>
-
-      <div class="d-flex justify-content-end gap-2">
-        <button class="btn btn-secondary">Aju Banding</button>
-        <button class="btn btn-primary">Terima</button>
-      </div>
+    <div class="table-responsive">
+        <h5>Laporan yang Diajukan</h5>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>No. Pelanggaran</th>
+                    <th>Nama Pelanggaran</th>
+                    <th>Waktu</th>
+                    <th>Status</th>
+                    <th>Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                try {
+                    $user_id = $_SESSION['user_id'];
+                    $query = "SELECT r.id, r.nama_pelanggaran, r.waktu, h.status 
+                             FROM report r 
+                             INNER JOIN history h ON h.fk_report = r.id 
+                             ORDER BY r.waktu DESC";
+                    
+                    $stmt = $koneksi->prepare($query);
+                    $stmt->execute();
+                    
+                    while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        echo "<tr>";
+                        echo "<td>VIO" . str_pad($row['id'], 3, '0', STR_PAD_LEFT) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['nama_pelanggaran']) . "</td>";
+                        echo "<td>" . date('d/m/Y H:i', strtotime($row['waktu'])) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['status']) . "</td>";
+                        echo "<td><button class='btn btn-warning btn-sm' onclick='viewReportDetail(" . $row['id'] . ")'>Check</button></td>";
+                        echo "</tr>";
+                    }
+                } catch(PDOException $e) {
+                    echo "<tr><td colspan='5' class='text-danger'>Error loading reports: " . $e->getMessage() . "</td></tr>";
+                }
+                ?>
+            </tbody>
+        </table>
     </div>
-  </div>
+
+    <!-- Detail Modal -->
+    <div class="modal fade" id="reportDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detail Laporan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <h6>Bukti</h6>
+                        <img id="modal-bukti" class="img-fluid rounded" alt="Bukti">
+                    </div>
+                    <div class="mb-3">
+                        <h6>Nama Pelanggaran</h6>
+                        <p id="modal-pelanggaran" class="text-muted"></p>
+                    </div>
+                    <div class="mb-3">
+                        <h6>Waktu</h6>
+                        <p id="modal-waktu" class="text-muted"></p>
+                    </div>
+                    <div class="mb-3">
+                        <h6>Lokasi</h6>
+                        <p id="modal-lokasi" class="text-muted"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+
     </div>
 </div>
 
