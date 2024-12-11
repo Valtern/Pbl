@@ -847,7 +847,7 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
 
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-punishment" role="tabpanel" aria-labelledby="v-pills-punishment-tab">
     <div class="table-responsive">
-        <h5>Laporan yang Diajukan</h5>
+        <h5>Daftar Hukuman</h5>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -858,22 +858,54 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>ABC01</td>
-                    <td>Merokok</td>
-                    <td>Membersihkan taman</td>
-                    <td>Accepted</td>
-                </tr>
-                <tr>
-                    <td>ABC02</td>
-                    <td>Merusak sarana prasarana</td>
-                    <td>Mengganti barang yang sama</td>
-                    <td>Not Done</td>
-                </tr>
+                <?php
+                try {
+                    $user_id = $_SESSION['user_id'];
+                    
+                    // Get student's name first
+                    $nameQuery = "SELECT nama_lengkap FROM mahasiswa WHERE id = :user_id";
+                    $stmt = $koneksi->prepare($nameQuery);
+                    $stmt->bindParam(':user_id', $user_id);
+                    $stmt->execute();
+                    $studentData = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    // Then get their punishment records
+                    $query = "SELECT 
+                        r.id,
+                        r.nama_pelanggaran,
+                        h.hukuman,
+                        h.status
+                    FROM report r
+                    INNER JOIN history h ON h.fk_report = r.id 
+                    WHERE r.name = :student_name
+                    ORDER BY r.waktu DESC";
+                    
+                    $stmt = $koneksi->prepare($query);
+                    $stmt->bindParam(':student_name', $studentData['nama_lengkap']);
+                    $stmt->execute();
+                    
+                    while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        echo "<tr>";
+                        echo "<td>VIO" . str_pad($row['id'], 3, '0', STR_PAD_LEFT) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['nama_pelanggaran']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['hukuman']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['status']) . "</td>";
+                        echo "</tr>";
+                    }
+                    
+                    if ($stmt->rowCount() == 0) {
+                        echo "<tr><td colspan='4' class='text-center'>Tidak ada hukuman yang tercatat</td></tr>";
+                    }
+                    
+                } catch(PDOException $e) {
+                    echo "<tr><td colspan='4' class='text-danger'>Error: " . $e->getMessage() . "</td></tr>";
+                }
+                ?>
             </tbody>
         </table>
     </div>
 </div>
+
 
 </div>
 
