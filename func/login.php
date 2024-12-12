@@ -59,12 +59,14 @@ class ProfileFetcher {
     private function getQuery() {
         switch ($this->role) {
             case 'admin':
-            case 'dosen':
                 return "SELECT nama_lengkap, jenis_kelamin, no_hp, jurusan, prodi, profesi, email 
                         FROM {$this->role} WHERE id = ?";
+            case 'dosen':
+                return "SELECT nama_lengkap, jenis_kelamin, no_hp, jurusan, prodi, profesi, email, pfp 
+                        FROM dosen WHERE id = ?";
             case 'mahasiswa':
                 return "SELECT nim, nama_lengkap, jenis_kelamin, no_hp, no_hp_ortu, 
-                        jurusan, prodi, kelas, email 
+                        jurusan, prodi, kelas, email, pfp 
                         FROM mahasiswa WHERE id = ?";
             default:
                 throw new Exception('Invalid role');
@@ -72,11 +74,22 @@ class ProfileFetcher {
     }
     
     public function fetch() {
-        $stmt = $this->db->prepare($this->getQuery());
-        $stmt->execute([$this->userId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->db->prepare($this->getQuery());
+            $stmt->execute([$this->userId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result === false) {
+                return null;
+            }
+            
+            return $result;
+        } catch (PDOException $e) {
+            throw new Exception("Database error: " . $e->getMessage());
+        }
     }
 }
+
 
 class AuthenticationHandler {
     private $db;
@@ -107,7 +120,7 @@ class AuthenticationHandler {
     }
     
     public function handleProfileFetch() {
-        if (!isset($_SESSION['user_id'])) {
+        if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
             http_response_code(401);
             echo json_encode(['error' => 'User not logged in']);
             exit();
@@ -123,17 +136,26 @@ class AuthenticationHandler {
             $data = $profileFetcher->fetch();
             
             if ($data) {
+                // Ensure all numeric fields are properly formatted
+                if (isset($data['no_hp'])) {
+                    $data['no_hp'] = (string)$data['no_hp'];
+                }
+                if (isset($data['no_hp_ortu'])) {
+                    $data['no_hp_ortu'] = (string)$data['no_hp_ortu'];
+                }
+                
                 echo json_encode($data);
             } else {
                 http_response_code(404);
                 echo json_encode(['error' => 'User not found']);
             }
             
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
     }
+    
 }
 
 // Main execution

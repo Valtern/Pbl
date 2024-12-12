@@ -2,7 +2,7 @@
 session_start();
 require_once '../connection.php';
 
-class User {
+abstract class User {
     protected $id;
     protected $role;
     protected $db;
@@ -30,17 +30,31 @@ class Mahasiswa extends User {
                     jenis_kelamin = :jenis_kelamin,
                     no_hp = :no_hp,
                     no_hp_ortu = :no_hp_ortu,
-                    email = :email
-                 WHERE id = :user_id";
-                 
+                    email = :email";
+        
         $params = array_merge($this->getCommonFields($postData), [
             'no_hp_ortu' => $postData['no_hp_ortu'],
             'user_id' => $this->id
         ]);
         
+        // Handle profile photo upload
+        if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['profile_photo'];
+            $fileName = time() . '_' . $file['name'];
+            $uploadPath = '../uploads/profile/' . $fileName;
+            
+            if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                $query .= ", pfp = :pfp";
+                $params['pfp'] = $fileName;
+            }
+        }
+        
+        $query .= " WHERE id = :user_id";
+        
         return ['query' => $query, 'params' => $params];
     }
 }
+
 
 class Staff extends User {
     public function updateProfile($postData) {
@@ -51,15 +65,28 @@ class Staff extends User {
                     jurusan = :jurusan,
                     prodi = :prodi,
                     profesi = :profesi,
-                    email = :email
-                 WHERE id = :user_id";
-                 
+                    email = :email";
+        
         $params = array_merge($this->getCommonFields($postData), [
             'jurusan' => $postData['jurusan'],
             'prodi' => $postData['prodi'],
             'profesi' => $postData['profesi'],
             'user_id' => $this->id
         ]);
+        
+        // Handle profile photo upload
+        if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['profile_photo'];
+            $fileName = time() . '_' . $file['name'];
+            $uploadPath = '../uploads/profile/' . $fileName;
+            
+            if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                $query .= ", pfp = :pfp";
+                $params['pfp'] = $fileName;
+            }
+        }
+        
+        $query .= " WHERE id = :user_id";
         
         return ['query' => $query, 'params' => $params];
     }

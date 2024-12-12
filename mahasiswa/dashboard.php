@@ -130,6 +130,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+document.getElementById('profile-photo').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please upload an image file');
+            this.value = '';
+            return;
+        }
+        
+        // Validate file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('File size must be less than 2MB');
+            this.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview-photo').src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+});
+
 function refreshHistory() {
     fetch('../func/get_history.php')
     .then(response => response.json())
@@ -576,10 +602,16 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-profile" role="tabpanel" aria-labelledby="v-pills-profile-tab">
     <div class="card">
         <div class="card-body">
-            <div class="text-center mb-4">
-            <img src="../img/profile-photo.jpg" class="rounded-3 mb-3" style="width: 150px; height: 200px; object-fit: cover;">
+        <div class="text-center mb-4">
+    <img src="<?php 
+        $user_id = $_SESSION['user_id'];
+        $stmt = $koneksi->prepare('SELECT pfp FROM mahasiswa WHERE id = ?');
+        $stmt->execute([$user_id]);
+        $result = $stmt->fetch();
+        echo $result['pfp'] ? '../uploads/profile/' . $result['pfp'] : '../img/profile-photo.jpg';
+    ?>" class="rounded-3 mb-3" style="width: 150px; height: 200px; object-fit: cover;" id="profile-image">
+</div>
 
-            </div>
             
 <div class="row mb-3">
     <div class="col-4">NIM</div>
@@ -628,7 +660,11 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
     <div class="card">
         <div class="card-body">
             <h5 class="card-title mb-4">Edit Profile</h5>
-            <form id="editProfileForm" method="POST" action="../func/update_profile.php">
+<form id="editProfileForm" method="POST" action="../func/update_profile.php" enctype="multipart/form-data">
+    <div class="mb-3">
+        <label class="form-label">Profile Picture</label>
+        <input type="file" class="form-control" name="profile_photo" id="profile-photo" accept="image/*">
+    </div>
     <div class="mb-3">
         <label class="form-label">NIM</label>
         <input type="text" class="form-control" name="nim" id="edit-nim">
