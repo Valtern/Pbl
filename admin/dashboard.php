@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Add click handlers to check buttons
-    document.querySelectorAll('.btn-warning').forEach(button => {
+    document.querySelectorAll('.btn-compensation').forEach(button => {
         button.addEventListener('click', showCheckCompensation);
     });
 });
@@ -937,7 +937,7 @@ function showCheckCompensation() {
                     echo "<td>" . htmlspecialchars($row['nama_pelanggaran']) . "</td>";
                     echo "<td>" . htmlspecialchars($row['status']) . "</td>";
                     echo "<td>
-                            <button class='btn btn-warning btn-sm checks-btn' 
+                            <button class='btn btn-warning btn-sm checks-btn btn-compensation' 
                                     data-id='" . $row['id'] . "' 
                                     data-bobot='" . $row['bobot'] . "'
                                     data-hukuman='" . $row['hukuman'] . "'>
