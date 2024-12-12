@@ -37,6 +37,124 @@ if ($_SESSION['role'] !== $current_role) {
         });
     });
 });
+document.addEventListener('DOMContentLoaded', function () {
+    // Fetch and populate profile data
+    fetch('../func/login.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+            action: 'fetchProfile'
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Failed to fetch profile data");
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            console.error(data.error);
+        } else {
+            // Populate profile fields
+            document.querySelector('#profile-nama-lengkap').textContent = data.nama_lengkap;
+            document.querySelector('#profile-jenis-kelamin').textContent = data.jenis_kelamin;
+            document.querySelector('#profile-no-hp').textContent = data.no_hp;
+            document.querySelector('#profile-jurusan').textContent = data.jurusan;
+            document.querySelector('#profile-prodi').textContent = data.prodi;
+            document.querySelector('#profile-profesi').textContent = data.profesi;
+            document.querySelector('#profile-email').textContent = data.email;
+            
+            // Populate edit form fields
+            document.getElementById('edit-nama-lengkap').value = data.nama_lengkap;
+            document.getElementById('edit-jenis-kelamin').value = data.jenis_kelamin;
+            document.getElementById('edit-no-hp').value = data.no_hp;
+            document.getElementById('edit-jurusan').value = data.jurusan;
+            document.getElementById('edit-prodi').value = data.prodi;
+            document.getElementById('edit-profesi').value = data.profesi;
+            document.getElementById('edit-email').value = data.email;
+        }
+    })
+    .catch(error => console.error("Error fetching profile:", error));
+
+    // Handle profile photo preview
+    document.getElementById('profile-photo').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please upload an image file');
+                this.value = '';
+                return;
+            }
+            
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('File size must be less than 2MB');
+                this.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview-photo').src = e.target.result;
+                document.getElementById('preview-photo').style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Handle profile form submission
+    document.getElementById('editProfileForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch('../func/update_profile.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new TypeError('Expected JSON response from server');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('Profile updated successfully');
+            switchToProfile();
+            window.location.reload();
+        } else {
+            throw new Error(data.message || 'Update failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Still reload if we know the upload succeeded
+        if (error.message.includes('JSON')) {
+            window.location.reload();
+        } else {
+            alert('An error occurred while updating profile');
+        }
+    });
+});
+
+
+});
+
+function switchToProfile() {
+    document.querySelector('#v-pills-profile-tab').click();
+}
+
+function switchToEditProfile() {
+    document.querySelector('#v-pills-edit-profile-tab').click();
+}
+
+
 document.addEventListener('DOMContentLoaded', function() {
     const reportForm = document.querySelector('form[action="../func/report.php"]');
     
@@ -111,35 +229,8 @@ document.querySelector('form[action="../func/report.php"]').addEventListener('su
     });
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-    fetch('../func/login.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ action: 'fetchProfile' })
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("Failed to fetch profile data");
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                console.error(data.error);
-            } else {
-                // Populate profile fields
-                document.querySelector('#profile-nim').textContent = data.nim || 'N/A';
-                document.querySelector('#profile-nama-lengkap').textContent = data.nama_lengkap;
-                document.querySelector('#profile-jenis-kelamin').textContent = data.jenis_kelamin;
-                document.querySelector('#profile-no-hp').textContent = data.no_hp;
-                document.querySelector('#profile-jurusan').textContent = data.jurusan;
-                document.querySelector('#profile-prodi').textContent = data.prodi;
-                document.querySelector('#profile-profesi').textContent = data.profesi || 'N/A';
-                document.querySelector('#profile-email').textContent = data.email;
-            }
-        })
-        .catch(error => console.error("Error fetching profile:", error));
-});
+
+
 document.addEventListener('DOMContentLoaded', function() {
     const reportForm = document.querySelector('form[action="../func/report.php"]');
     
@@ -227,37 +318,7 @@ function viewReportDetail(reportId) {
         alert('Failed to load report details');
     });
 }
-document.addEventListener('DOMContentLoaded', function () {
-    fetch('../func/login.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({
-            action: 'fetchProfile'
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("Failed to fetch profile data");
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.error) {
-            console.error(data.error);
-        } else {
-            document.getElementById('edit-nama-lengkap').value = data.nama_lengkap;
-            document.getElementById('edit-jenis-kelamin').value = data.jenis_kelamin;
-            document.getElementById('edit-no-hp').value = data.no_hp;
-            document.getElementById('edit-jurusan').value = data.jurusan;
-            document.getElementById('edit-prodi').value = data.prodi;
-            document.getElementById('edit-profesi').value = data.profesi;
-            document.getElementById('edit-email').value = data.email;
-        }
-    })
-    .catch(error => console.error("Error fetching profile:", error));
-});
+
 
 
 function showAllNotifications() {
@@ -272,9 +333,6 @@ function showUnreadNotifications() {
     showAllNotifications();
 }
 
-function switchToProfile() {
-    document.querySelector('#v-pills-profile-tab').click();
-}
 
 function switchToProfile() {
     const profileTab = document.querySelector('#v-pills-profile-tab');
@@ -478,53 +536,65 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
     ?>
 </div>
 
+<!-- Profile Tab Panel -->
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-profile" role="tabpanel" aria-labelledby="v-pills-profile-tab">
     <div class="card">
         <div class="card-body">
             <div class="text-center mb-4">
-                <img src="../img/profile-photo.jpg" class="rounded-3 mb-3" style="width: 150px; height: 200px; object-fit: cover;">
+                <img src="<?php 
+                    $user_id = $_SESSION['user_id'];
+                    $stmt = $koneksi->prepare('SELECT pfp FROM dosen WHERE id = ?');
+                    $stmt->execute([$user_id]);
+                    $result = $stmt->fetch();
+                    echo $result['pfp'] ? '../uploads/profile/' . $result['pfp'] : '../img/profile-photo.jpg';
+                ?>" class="rounded-3 mb-3" style="width: 150px; height: 200px; object-fit: cover;" id="profile-image">
             </div>
-            
-<div class="row mb-3">
-    <div class="col-4">NIM</div>
-    <div class="col-8" id="profile-nim"></div>
-</div>
-<div class="row mb-3">
-    <div class="col-4">Nama Lengkap</div>
-    <div class="col-8" id="profile-nama-lengkap"></div>
-</div>
-<div class="row mb-3">
-    <div class="col-4">Jenis Kelamin</div>
-    <div class="col-8" id="profile-jenis-kelamin"></div>
-</div>
-<div class="row mb-3">
-    <div class="col-4">No. Handphone</div>
-    <div class="col-8" id="profile-no-hp"></div>
-</div>
-<div class="row mb-3">
-    <div class="col-4">Jurusan</div>
-    <div class="col-8" id="profile-jurusan"></div>
-</div>
-<div class="row mb-3">
-    <div class="col-4">Prodi</div>
-    <div class="col-8" id="profile-prodi"></div>
-</div>
-<div class="row mb-3">
-    <div class="col-4">Profesi</div>
-    <div class="col-8" id="profile-profesi"></div>
-</div>
-            
+            <div class="row mb-3">
+                <div class="col-4">Nama Lengkap</div>
+                <div class="col-8" id="profile-nama-lengkap"></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4">Jenis Kelamin</div>
+                <div class="col-8" id="profile-jenis-kelamin"></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4">No. Handphone</div>
+                <div class="col-8" id="profile-no-hp"></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4">Jurusan</div>
+                <div class="col-8" id="profile-jurusan"></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4">Prodi</div>
+                <div class="col-8" id="profile-prodi"></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4">Profesi</div>
+                <div class="col-8" id="profile-profesi"></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4">Email</div>
+                <div class="col-8" id="profile-email"></div>
+            </div>
             <div class="text-end">
-                <button class="btn btn-primary" onclick="document.querySelector('#v-pills-edit-profile-tab').click()">Edit</button>
+                <button class="btn btn-primary" onclick="switchToEditProfile()">Edit</button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Edit Profile Tab Panel -->
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-edit-profile" role="tabpanel" aria-labelledby="v-pills-edit-profile-tab">
     <div class="card">
         <div class="card-body">
             <h5 class="card-title mb-4">Edit Profile</h5>
-            <form id="editProfileForm" method="POST" action="../func/update_profile.php">
+            <form id="editProfileForm" method="POST" action="../func/update_profile.php" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Profile Picture</label>
+                    <input type="file" class="form-control" name="profile_photo" id="profile-photo" accept="image/*">
+                    <img id="preview-photo" class="mt-2 rounded" style="max-width: 200px; display: none;">
+                </div>
                 <div class="mb-3">
                     <label class="form-label">Nama Lengkap</label>
                     <input type="text" class="form-control" name="nama_lengkap" id="edit-nama-lengkap" required>
@@ -568,6 +638,7 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
         </div>
     </div>
 </div>
+
 
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-messages" role="tabpanel" aria-labelledby="v-pills-messages-tab">
     <div class="d-flex gap-2 mb-4">
