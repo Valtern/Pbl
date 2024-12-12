@@ -13,6 +13,8 @@ if ($_SESSION['role'] !== $current_role) {
     header("Location: ../index.php");
     exit();
 }
+
+
 ?>
 
 
@@ -77,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 document.addEventListener('DOMContentLoaded', function() {
     // Handle check button clicks
-    document.querySelectorAll('.check-btn').forEach(button => {
+    document.querySelectorAll('.checks-btn').forEach(button => {
         button.addEventListener('click', function() {
             const historyId = this.dataset.id;
             const bobot = this.dataset.bobot;
@@ -193,24 +195,73 @@ function viewSubmittedDetail(reportId) {
 }
 function viewReportDetail(reportId) {
     fetch(`../func/get_report_details.php?id=${reportId}`)
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.querySelector('#modal-bukti').src = '../uploads/evidence/' + data.data.bukti;
-            document.querySelector('#modal-pelanggaran').textContent = data.data.nama_pelanggaran;
-            document.querySelector('#modal-waktu').textContent = new Date(data.data.waktu).toLocaleString('id-ID');
-            document.querySelector('#modal-lokasi').textContent = data.data.lokasi;
-            
-            new bootstrap.Modal(document.getElementById('reportDetailModal')).show();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to load report details');
-    });
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Populate modal with report details
+                document.querySelector('#modal-bukti').src = '../uploads/evidence/' + data.data.bukti;
+                document.querySelector('#modal-name').textContent = data.data.name;
+                document.querySelector('#modal-pelanggaran').textContent = data.data.nama_pelanggaran;
+                document.querySelector('#modal-waktu').textContent = new Date(data.data.waktu).toLocaleString('id-ID');
+                document.querySelector('#modal-lokasi').textContent = data.data.lokasi;
+                
+                // Show the modal
+                new bootstrap.Modal(document.getElementById('reportDetailModal')).show();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load report details');
+        });
 }
+document.addEventListener('DOMContentLoaded', function() {
+    const reportForm = document.querySelector('form[action="../func/report.php"]');
+    
+    reportForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        fetch('../func/report.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Report submitted successfully');
+                reportForm.reset();
+                document.querySelector('#v-pills-history-tab').click();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while submitting the report');
+        });
+    });
+
+    document.querySelector('input[name="bukti"]').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please upload an image file (JPEG, PNG, or GIF)');
+            this.value = '';
+            return;
+        }
+        
+        if (file.size > maxSize) {
+            alert('File size must be less than 5MB');
+            this.value = '';
+            return;
+        }
+    });
+});
+
 function showUnreadNotifications() {
     // You can add logic here to filter unread notifications
     // For now, it just shows all notifications
@@ -228,12 +279,6 @@ function showCheckCompensation() {
     checkCompensation.classList.remove('d-none');
 }
 
-function showCompensationList() {
-    const compensationList = document.querySelector('.compensation');
-    const checkCompensation = document.querySelector('.check-compensation-content');
-    compensationList.classList.remove('d-none');
-    checkCompensation.classList.add('d-none');
-}
 function switchToProfile() {
     const profileTab = document.querySelector('#v-pills-profile-tab');
     profileTab.click();
@@ -259,18 +304,8 @@ function showCheckCompensation() {
   checkCompensation.classList.remove('d-none');
 }
 
-function showCompensationList() {
-  const compensationList = document.querySelector('.compensation');
-  const checkCompensation = document.querySelector('.check-compensation-content');
-  
-  compensationList.classList.remove('d-none');
-  checkCompensation.classList.add('d-none');
-}
 
-// Add click handlers to check buttons
-document.querySelectorAll('.btn-warning').forEach(button => {
-  button.addEventListener('click', showCheckCompensation);
-});
+
 
 
         </script>
@@ -604,35 +639,55 @@ document.querySelectorAll('.btn-warning').forEach(button => {
     <div class="card">
         <div class="card-body">
             <h5 class="card-title mb-4">Laporkan Pelanggaran!</h5>
-            
-            <form>
+            <form method="POST" action="../func/report.php" enctype="multipart/form-data" id="reportForm">
                 <div class="mb-3">
                     <label class="form-label">Mahasiswa terlibat</label>
-                    <input type="text" class="form-control bg-light" placeholder="Masukkan nama mahasiswa">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Bukti</label>
-                    <textarea class="form-control bg-light" rows="3" placeholder="Masukkan bukti yang menguatkan laporan"></textarea>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Nama pelanggaran</label>
-                    <select class="form-select bg-light">
-                        <option selected disabled>Pilih Pelanggaran</option>
+                    <select name="name" class="form-select bg-light" required>
+                        <option value="" selected disabled>Pilih mahasiswa</option>
+                        <?php
+                        try {
+                            $stmt = $koneksi->prepare("SELECT id, nim, nama_lengkap FROM mahasiswa ORDER BY nama_lengkap ASC");
+                            $stmt->execute();
+                            while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='" . htmlspecialchars($row['nama_lengkap']) . "'>" . 
+                                     htmlspecialchars($row['nim'] . " - " . $row['nama_lengkap']) . "</option>";
+                            }
+                        } catch(PDOException $e) {
+                            echo "<option disabled>Error loading students</option>";
+                        }
+                        ?>
                     </select>
                 </div>
-
+                <div class="mb-3">
+                    <label class="form-label">Bukti</label>
+                    <input type="file" name="bukti" class="form-control bg-light" accept="image/*" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Jenis Pelanggaran</label>
+                    <select name="nama_pelanggaran" class="form-select bg-light" required>
+                        <option value="" selected disabled>Pilih pelanggaran</option>
+                        <?php
+                        try {
+                            $stmt = $koneksi->prepare("SELECT violation_description, level FROM violation ORDER BY level ASC");
+                            $stmt->execute();
+                            while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='" . htmlspecialchars($row['violation_description']) . "'>" . 
+                                     htmlspecialchars("Level " . $row['level'] . " - " . $row['violation_description']) . "</option>";
+                            }
+                        } catch(PDOException $e) {
+                            echo "<option disabled>Error loading violations</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
                 <div class="mb-3">
                     <label class="form-label">Waktu</label>
-                    <input type="text" class="form-control bg-light" placeholder="Masukkan waktu kejadian">
+                    <input type="datetime-local" name="waktu" class="form-control bg-light" required>
                 </div>
-
                 <div class="mb-3">
                     <label class="form-label">Lokasi</label>
-                    <input type="text" class="form-control bg-light" placeholder="Masukkan lokasi kejadian">
+                    <input type="text" name="lokasi" class="form-control bg-light" required>
                 </div>
-
                 <div class="text-end">
                     <button type="submit" class="btn btn-primary">Kirim</button>
                 </div>
@@ -640,6 +695,8 @@ document.querySelectorAll('.btn-warning').forEach(button => {
         </div>
     </div>
 </div>
+
+
 
 
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-history" role="tabpanel" aria-labelledby="v-pills-history-tab">
@@ -679,7 +736,7 @@ document.querySelectorAll('.btn-warning').forEach(button => {
                         echo "<td>" . htmlspecialchars($row['nama_pelanggaran']) . "</td>";
                         echo "<td>" . date('d/m/Y H:i', strtotime($row['waktu'])) . "</td>";
                         echo "<td>" . htmlspecialchars($row['status']) . "</td>";
-                        echo "<td><button class='btn btn-warning btn-sm' onclick='viewReportDetail(" . $row['id'] . ")'>Check</button></td>";
+                        echo "<td><button class='btn btn-primary btn-sm' onclick='viewReportDetail(" . $row['id'] . ")'>View</button></td>";
                         echo "</tr>";
                     }
                 } catch(PDOException $e) {
@@ -723,6 +780,38 @@ document.querySelectorAll('.btn-warning').forEach(button => {
 
 </div>
 </div>
+<div class="modal fade" id="reportDetailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detail Laporan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Nama</h6>
+                    <p id="modal-name" class="text-muted"></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Bukti</h6>
+                    <img id="modal-bukti" class="img-fluid rounded" alt="Bukti">
+                </div>
+                <div class="mb-3">
+                    <h6>Nama Pelanggaran</h6>
+                    <p id="modal-pelanggaran" class="text-muted"></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Waktu</h6>
+                    <p id="modal-waktu" class="text-muted"></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Lokasi</h6>
+                    <p id="modal-lokasi" class="text-muted"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 
 
@@ -751,7 +840,7 @@ document.querySelectorAll('.btn-warning').forEach(button => {
                     echo "<td>" . htmlspecialchars($row['nama_pelanggaran']) . "</td>";
                     echo "<td>" . htmlspecialchars($row['status']) . "</td>";
                     echo "<td>
-                            <button class='btn btn-warning btn-sm check-btn' 
+                            <button class='btn btn-warning btn-sm checks-btn' 
                                     data-id='" . $row['id'] . "' 
                                     data-bobot='" . $row['bobot'] . "'
                                     data-hukuman='" . $row['hukuman'] . "'>

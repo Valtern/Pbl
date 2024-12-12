@@ -37,6 +37,79 @@ if ($_SESSION['role'] !== $current_role) {
         });
     });
 });
+document.addEventListener('DOMContentLoaded', function() {
+    const reportForm = document.querySelector('form[action="../func/report.php"]');
+    
+    reportForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        fetch('../func/report.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Report submitted successfully');
+                reportForm.reset();
+                document.querySelector('#v-pills-history-tab').click();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while submitting the report');
+        });
+    });
+
+    document.querySelector('input[name="bukti"]').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please upload an image file (JPEG, PNG, or GIF)');
+            this.value = '';
+            return;
+        }
+        
+        if (file.size > maxSize) {
+            alert('File size must be less than 5MB');
+            this.value = '';
+            return;
+        }
+    });
+});
+document.querySelector('form[action="../func/report.php"]').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const submitButton = this.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    const formData = new FormData(this);
+    
+    fetch('../func/report.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Report submitted successfully');
+            this.reset();
+            document.querySelector('#v-pills-history-tab').click();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while submitting the report');
+    })
+    .finally(() => {
+        submitButton.disabled = false;
+    });
+});
 
 document.addEventListener('DOMContentLoaded', function () {
     fetch('../func/login.php', {
@@ -534,94 +607,68 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
     </div>
 </div>
 
-        <?php
-        require_once '../connection.php'; // Include database connection
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $name = $_POST['name'];
-            $bukti = $_POST['bukti'];
-            $nama_pelanggaran = $_POST['nama_pelanggaran'];
-            $waktu = date('Y-m-d H:i:s', strtotime($_POST['waktu'])); // Ensure proper datetime format
-            $lokasi = $_POST['lokasi'];
-
-            try {
-                $query = "INSERT INTO report (name, bukti, nama_pelanggaran, waktu, lokasi) VALUES (:name, :bukti, :nama_pelanggaran, :waktu, :lokasi)";
-                $stmt = $koneksi->prepare($query);
-                $stmt->bindParam(':name', $name);
-                $stmt->bindParam(':bukti', $bukti);
-                $stmt->bindParam(':nama_pelanggaran', $nama_pelanggaran);
-                $stmt->bindParam(':waktu', $waktu);
-                $stmt->bindParam(':lokasi', $lokasi);
-                $stmt->execute();
-                echo "Report successfully submitted.";
-            } catch (PDOException $e) {
-                echo "Error: " . $e->getMessage();
-            }
-        }
-        ?>
 
 <div class="tab-pane fade p-3 border rounded bg-light" id="v-pills-report" role="tabpanel" aria-labelledby="v-pills-report-tab">
     <div class="card">
         <div class="card-body">
             <h5 class="card-title mb-4">Laporkan Pelanggaran!</h5>
             <form method="POST" action="../func/report.php" enctype="multipart/form-data" id="reportForm">
-            <div class="mb-3">
-    <label class="form-label">Mahasiswa terlibat</label>
-    <select name="name" class="form-select bg-light" required>
-        <option value="" selected disabled>Pilih mahasiswa</option>
-        <?php 
-        try {
-            $stmt = $koneksi->prepare("SELECT id, nim, nama_lengkap FROM mahasiswa ORDER BY nama_lengkap ASC");
-            $stmt->execute();
-            while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                echo "<option value='" . htmlspecialchars($row['nama_lengkap']) . "'>" . 
-                     htmlspecialchars($row['nim'] . " - " . $row['nama_lengkap']) . "</option>";
-            }
-        } catch(PDOException $e) {
-            echo "<option disabled>Error loading students</option>";
-        }
-        ?>
-    </select>
-</div>
-
-    <div class="mb-3">
-        <label class="form-label">Bukti</label>
-        <input type="file" name="bukti" class="form-control bg-light" accept="image/*" required>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Jenis Pelanggaran</label>
-        <select name="nama_pelanggaran" class="form-select bg-light" required>
-            <option value="" selected disabled>Pilih pelanggaran</option>
-            <?php
-            try {
-                $stmt = $koneksi->prepare("SELECT violation_description, level FROM violation ORDER BY level ASC");
-                $stmt->execute();
-                while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    echo "<option value='" . htmlspecialchars($row['violation_description']) . "'>" . 
-                         htmlspecialchars("Level " . $row['level'] . " - " . $row['violation_description']) . "</option>";
-                }
-            } catch(PDOException $e) {
-                echo "<option disabled>Error loading violations</option>";
-            }
-            ?>
-        </select>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Waktu</label>
-        <input type="datetime-local" name="waktu" class="form-control bg-light" required>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Lokasi</label>
-        <input type="text" name="lokasi" class="form-control bg-light" required>
-    </div>
-    <div class="text-end">
-        <button type="submit" class="btn btn-primary">Kirim</button>
-    </div>
-</form>
-
+                <div class="mb-3">
+                    <label class="form-label">Mahasiswa terlibat</label>
+                    <select name="name" class="form-select bg-light" required>
+                        <option value="" selected disabled>Pilih mahasiswa</option>
+                        <?php
+                        try {
+                            $stmt = $koneksi->prepare("SELECT id, nim, nama_lengkap FROM mahasiswa ORDER BY nama_lengkap ASC");
+                            $stmt->execute();
+                            while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='" . htmlspecialchars($row['nama_lengkap']) . "'>" . 
+                                     htmlspecialchars($row['nim'] . " - " . $row['nama_lengkap']) . "</option>";
+                            }
+                        } catch(PDOException $e) {
+                            echo "<option disabled>Error loading students</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bukti</label>
+                    <input type="file" name="bukti" class="form-control bg-light" accept="image/*" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Jenis Pelanggaran</label>
+                    <select name="nama_pelanggaran" class="form-select bg-light" required>
+                        <option value="" selected disabled>Pilih pelanggaran</option>
+                        <?php
+                        try {
+                            $stmt = $koneksi->prepare("SELECT violation_description, level FROM violation ORDER BY level ASC");
+                            $stmt->execute();
+                            while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='" . htmlspecialchars($row['violation_description']) . "'>" . 
+                                     htmlspecialchars("Level " . $row['level'] . " - " . $row['violation_description']) . "</option>";
+                            }
+                        } catch(PDOException $e) {
+                            echo "<option disabled>Error loading violations</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Waktu</label>
+                    <input type="datetime-local" name="waktu" class="form-control bg-light" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Lokasi</label>
+                    <input type="text" name="lokasi" class="form-control bg-light" required>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">Kirim</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
 
 
 
