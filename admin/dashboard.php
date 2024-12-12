@@ -46,6 +46,12 @@ document.addEventListener('DOMContentLoaded', function () {
         button.addEventListener('click', showCheckCompensation);
     });
 });
+function showCompensationList() {
+    const compensationList = document.querySelector('.compensation');
+    const checkCompensation = document.querySelector('.check-compensation-content');
+    compensationList.classList.remove('d-none');
+    checkCompensation.classList.add('d-none');
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     // Fetch and populate profile data
