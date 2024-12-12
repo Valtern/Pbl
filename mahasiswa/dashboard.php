@@ -73,13 +73,33 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function populateEditForm(data) {
-    document.getElementById('edit-nim').value = data.nim;
-    document.getElementById('edit-nama-lengkap').value = data.nama_lengkap;
-    document.getElementById('edit-jenis-kelamin').value = data.jenis_kelamin;
-    document.getElementById('edit-no-hp').value = data.no_hp;
-    document.getElementById('edit-no-hp-ortu').value = data.no_hp_ortu;
-    document.getElementById('edit-email').value = data.email;
+    document.getElementById('edit-nim').value = data.nim || '';
+    document.getElementById('edit-nama-lengkap').value = data.nama_lengkap || '';
+    document.getElementById('edit-jenis-kelamin').value = data.jenis_kelamin || 'Laki-laki';
+    document.getElementById('edit-no-hp').value = data.no_hp || '';
+    document.getElementById('edit-no-hp-ortu').value = data.no_hp_ortu || '';
+    document.getElementById('edit-email').value = data.email || '';
 }
+function switchToEditProfile() {
+    fetch('../func/login.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+            action: 'fetchProfile'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.error) {
+            populateEditForm(data);
+            document.querySelector('#v-pills-edit-profile-tab').click();
+        }
+    })
+    .catch(error => console.error("Error:", error));
+}
+
 // Add this to your existing script section
 document.addEventListener('DOMContentLoaded', function() {
     const reportForm = document.querySelector('form[action="../func/report.php"]');
@@ -221,6 +241,28 @@ function viewReportDetail(reportId) {
         alert('Failed to load report details');
     });
 }
+document.getElementById('editProfileForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch('../func/update_profile.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Profile updated successfully');
+            document.querySelector('#v-pills-profile-tab').click();
+        } else {
+            alert('Error updating profile: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating profile');
+    });
+});
 
 
 document.querySelector('input[name="bukti"]').addEventListener('change', function(e) {
@@ -587,38 +629,39 @@ document.getElementById('profile-photo').addEventListener('change', function(e) 
         <div class="card-body">
             <h5 class="card-title mb-4">Edit Profile</h5>
             <form id="editProfileForm" method="POST" action="../func/update_profile.php">
-                <div class="mb-3">
-                    <label class="form-label">NIM</label>
-                    <input type="text" class="form-control" name="nim" id="edit-nim" readonly>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Nama Lengkap</label>
-                    <input type="text" class="form-control" name="nama_lengkap" id="edit-nama-lengkap" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Jenis Kelamin</label>
-                    <select class="form-select" name="jenis_kelamin" id="edit-jenis-kelamin" required>
-                        <option value="Laki-laki">Laki-laki</option>
-                        <option value="Perempuan">Perempuan</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">No. Handphone</label>
-                    <input type="tel" class="form-control" name="no_hp" id="edit-no-hp" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">No. Handphone Orang Tua / Wali</label>
-                    <input type="tel" class="form-control" name="no_hp_ortu" id="edit-no-hp-ortu">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-control" name="email" id="edit-email" required>
-                </div>
-                <div class="text-end">
-                    <button type="button" class="btn btn-secondary me-2" onclick="switchToProfile()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                </div>
-            </form>
+    <div class="mb-3">
+        <label class="form-label">NIM</label>
+        <input type="text" class="form-control" name="nim" id="edit-nim">
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Nama Lengkap</label>
+        <input type="text" class="form-control" name="nama_lengkap" id="edit-nama-lengkap" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Jenis Kelamin</label>
+        <select class="form-select" name="jenis_kelamin" id="edit-jenis-kelamin" readonly>
+            <option value="Laki-laki">Laki-laki</option>
+            <option value="Perempuan">Perempuan</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">No. Handphone</label>
+        <input type="tel" class="form-control" name="no_hp" id="edit-no-hp" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">No. Handphone Orang Tua / Wali</label>
+        <input type="tel" class="form-control" name="no_hp_ortu" id="edit-no-hp-ortu">
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" name="email" id="edit-email" required>
+    </div>
+    <div class="text-end">
+        <button type="button" class="btn btn-secondary me-2" onclick="switchToProfile()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+
         </div>
     </div>
 </div>
